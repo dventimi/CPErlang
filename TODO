@@ -1,6 +1,6 @@
 # -*- mode: org; -*-
 
-* Modifying the frequency server
+* TODO Modifying the frequency server
 
   In this exercise we’ll look at a few ways in which the frequency
   server can be modified.
@@ -11,7 +11,7 @@
   There is a supporting file, frequency.erl, available (as a zip file)
   under ‘Downloads’ below.
 
-* Naming the server
+* TODO Naming the server
 
   As introduced in the previous step and in the module frequency.erl,
   the frequency server is spawned and then accessed through its
@@ -22,7 +22,7 @@
 
   Test your re-definition from the shell.
 
-* Improving the functionality of the server
+* TODO Improving the functionality of the server
 
   The current implementation is rather permissive: it allows a client
   to hold more than one frequency; and, it allows a client to
