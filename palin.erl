@@ -1,5 +1,6 @@
 -module(palin).
 -export([palin/1,nopunct/1,palindrome/1]).
+-export([server/1]).
 
 % palindrome problem
 %
@@ -44,7 +45,21 @@ shunt([],Ys) ->
 shunt([X|Xs],Ys) ->
     shunt(Xs,[X|Ys]).
 
- 
-	
+%% A palindrome checking server
 
-
+server(Pid) ->
+    receive
+	{check,Msg} ->
+	    Pid ! {result,
+		   lists:flatten(
+		     io_lib:format(
+		       "\"~s\"~sa palindrome.",
+		       [Msg,
+			case(palindrome(Msg)) of
+			    true -> " is ";
+			    false -> " is not "
+			end]))},
+	    server(Pid);
+	_ ->
+	    ok
+    end.
