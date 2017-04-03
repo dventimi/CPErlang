@@ -13,8 +13,8 @@
 %% initialize the server.
 
 init() ->
-  Frequencies = {get_frequencies(), []},
-  loop(Frequencies).
+    Frequencies = {get_frequencies(), []},
+    loop(Frequencies).
 
 % Hard Coded
 get_frequencies() -> [10,11,12,13,14,15].
@@ -22,27 +22,27 @@ get_frequencies() -> [10,11,12,13,14,15].
 %% The Main Loop
 
 loop(Frequencies) ->
-  receive
-    {request, Pid, allocate} ->
-      {NewFrequencies, Reply} = allocate(Frequencies, Pid),
-      Pid ! {reply, Reply},
-      loop(NewFrequencies);
-    {request, Pid , {deallocate, Freq}} ->
-      NewFrequencies = deallocate(Frequencies, Freq),
-      Pid ! {reply, ok},
-      loop(NewFrequencies);
-    {request, Pid, stop} ->
-      Pid ! {reply, stopped}
-  end.
+    receive
+	{request, Pid, allocate} ->
+	    {NewFrequencies, Reply} = allocate(Frequencies, Pid),
+	    Pid ! {reply, Reply},
+	    loop(NewFrequencies);
+	{request, Pid , {deallocate, Freq}} ->
+	    NewFrequencies = deallocate(Frequencies, Freq),
+	    Pid ! {reply, ok},
+	    loop(NewFrequencies);
+	{request, Pid, stop} ->
+	    Pid ! {reply, stopped}
+    end.
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
 
 allocate({[], Allocated}, _Pid) ->
-  {{[], Allocated}, {error, no_frequency}};
+    {{[], Allocated}, {error, no_frequency}};
 allocate({[Freq|Free], Allocated}, Pid) ->
-  {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
+    {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
 
 deallocate({Free, Allocated}, Freq) ->
-  NewAllocated=lists:keydelete(Freq, 1, Allocated),
-  {[Freq|Free],  NewAllocated}.
+    NewAllocated=lists:keydelete(Freq, 1, Allocated),
+    {[Freq|Free],  NewAllocated}.
