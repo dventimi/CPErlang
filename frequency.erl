@@ -8,6 +8,7 @@
 
 -module(frequency).
 -export([init/0]).
+-include_lib("eunit/include/eunit.hrl").
 
 %% These are the start functions used to create and
 %% initialize the server.
