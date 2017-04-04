@@ -47,3 +47,22 @@ allocate({[Freq|Free], Allocated}, Pid) ->
 deallocate({Free, Allocated}, Freq) ->
     NewAllocated=lists:keydelete(Freq, 1, Allocated),
     {[Freq|Free],  NewAllocated}.
+
+%% Test functions
+
+frequency_test() ->
+    Freq = spawn(frequency,init,[]),
+    timer:sleep(1000),
+    Freq ! {request,self(),allocate},
+    timer:sleep(1000),
+    {ok,F1} = receive {reply,Msg1} -> Msg1 end,
+    ?debugFmt("allocated:  ~w~n",[F1]),
+    Freq ! {request,self(),{deallocate,F1}},
+    timer:sleep(1000),
+    ok = receive {reply,Msg2} -> Msg2 end,
+    Freq ! {request,self(),allocate},
+    timer:sleep(1000),
+    {ok,F2} = receive {reply,Msg3} -> Msg3 end,
+    ?debugFmt("allocated:  ~w~n",[F2]),
+    ?assert(F1==F2).
+    
