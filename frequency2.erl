@@ -21,7 +21,7 @@
 %% These are the start functions used to create and
 %% initialize the server.
 
-%% REVIEWER: I find the instructions are a little confusing.  We're do
+%% REVIEWER: I find the instructions are a little confusing.  We're to
 %% submit frequency.erl?  But frequency2.erl is the support file?
 %% Except, the original module name was just 'frequency', which is an
 %% error?  I decided that they must want us just to modify this file,
@@ -32,7 +32,7 @@
 
 start() ->
     register(frequency,
-	     spawn(frequency2, init, [])).
+	     spawn(frequency2, init, [])).	%REVIEWER:  Changed module name
 
 init() ->
     Frequencies = {get_frequencies(), []},
@@ -55,10 +55,10 @@ loop(Frequencies) ->
 	    loop(NewFrequencies);
 	{request, Pid, stop} ->
 	    Pid ! {reply, stopped};
-	{request, Pid, {sleep,N}} ->
-	    Pid ! {reply, sleeping},
-	    sleep(N),
-	    loop(Frequencies);
+	{request, Pid, {sleep,N}} ->		%REVIEWER: New protocol handler for 'sleep'
+	    Pid ! {reply, sleeping},		%Tell client we honor his request
+	    sleep(N),				%Use help function to sleep for awhile
+	    loop(Frequencies);			%Loop again, with state unchanged.
 	{request, Pid, clear} ->		%REVIEWER: New protocol handler for 'clear'
 	    clear(),				%Use help function.  Remind me why we're not just using 'flush'?
 	    Pid ! {reply, ok},			%Say 'ok' back to client.  All clear!
