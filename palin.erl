@@ -97,7 +97,6 @@ server() ->
 	    ok
     end.
 
-    
 %% The replicating server solution creates a server that proxies
 %% messages to a list of servers in a "round-robin" fashion.  Note
 %% that the proxy server is agnostic about the server protocol.  I.e.,
@@ -126,4 +125,3 @@ proxy([X|Xs],Servers) ->
 	    X ! Msg,
 	    proxy(Xs,Servers)
     end.
-
