@@ -13,7 +13,8 @@
 	 clear/0,
 	 clearserver/0,
 	 clearclient/0,
-	 spam/1
+	 spam/1,
+	 sleepserver/1
 	]).
 -include_lib("eunit/include/eunit.hrl").	%REVIEWER:  EUnit support
 
@@ -54,6 +55,10 @@ loop(Frequencies) ->
 	    loop(NewFrequencies);
 	{request, Pid, stop} ->
 	    Pid ! {reply, stopped};
+	{request, Pid, {sleep,N}} ->
+	    Pid ! {reply, sleeping},
+	    sleep(N),
+	    loop(Frequencies);
 	{request, Pid, clear} ->		%REVIEWER: New protocol handler for 'clear'
 	    clear(),				%Use help function.  Remind me why we're not just using 'flush'?
 	    Pid ! {reply, ok},			%Say 'ok' back to client.  All clear!
@@ -63,12 +68,17 @@ loop(Frequencies) ->
 	    loop(Frequencies)			%Loop again, with state unchanged.
     end.
 
-%% Functional interface
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FUNCTIONAL INTERFACE
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 allocate() -> 
     frequency ! {request, self(), allocate},
     receive 
 	{reply, Reply} -> Reply
+    after 1000 -> 
+	    clearclient(),			%Clear our own mailbox
+	    {error,timedout}
     end.
 
 deallocate(Freq) -> 
@@ -82,6 +92,13 @@ stop() ->
     receive 
 	{reply, Reply} -> Reply
     end.
+
+%% REVIEWER: Added a functional API call to send a message to the
+%% server to ask it to sleep for awhile.  Note that we don't wait for
+%% a reply because that would put US to sleep, too!
+
+sleepserver(N) ->
+    frequency ! {request, self(), {sleep, N}}.
 
 %% REVIEWER: Added a spam functional API call to send arbitrary
 %% messages.  The point is that these won't be handled and so will
@@ -108,6 +125,10 @@ clearserver() ->
 clearclient() ->
     clear().
 
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% INTERNAL HELP FUNCTIONS
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
 
@@ -132,10 +153,20 @@ clear() ->
 	    ok					%then exit.
     end.
 
+%% REVIEWER: Added internal help functions for echoing and sleeping.
+%% Yes, they're just wrappers around BIFs.  I'm being pedantic.
+
 echo(Msg) ->
     Msg.
 
-%% REVIEWER:  Adding EUnit tests.  See below.
+sleep(N) ->
+    ?debugMsg("I'm feeling very sleepy."),
+    timer:sleep(N),
+    ?debugMsg("I feel refreshed!").
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REVIEWER:  Adding EUnit tests.
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Uses fixtures.  See:  http://learnyousomeerlang.com/eunit
 frequency_test_() ->
@@ -145,16 +176,12 @@ frequency_test_() ->
      fun test_functions/0}.			%Test function
 
 setup() ->
-    ?debugMsg("Starting the frequency server."),
     start(),					%Just wraps functional API call
-    timer:sleep(1000),
-    ?debugMsg("Frequency server started.").
+    timer:sleep(1000).				%Try to avoid a race condition.
 
 teardown(_) ->					%EUnit teardown function has to take 1 parameter
-    ?debugMsg("Starting the frequency server."),
     stop(),					%Just wraps the functional API call
-    timer:sleep(1000),
-    ?debugMsg("Frequency server started.").
+    timer:sleep(1000).				%Try to avoid a race condition.
 
 test_functions() ->
     ?debugMsg("Start off with a little server spam"),
@@ -197,4 +224,60 @@ test_functions() ->
     clearserver(),
 
     ?debugMsg("Clear out the client's mailbox."),
-    clearclient().
+    clearclient(),
+    
+    ?debugMsg("Put the server to sleep then pepper it with allocation requests."),
+    sleepserver(10000),
+    ?debugFmt("~w~n", [allocate()]), 
+    ?debugFmt("~w~n", [allocate()]),
+    ?debugFmt("~w~n", [allocate()]).
+
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REVIEWER: Transcript of a sample run of frequency2:test(). Note
+%% that <0.231.0> is the client process, while <0.229.0> is the server
+%% process.
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% frequency2.erl:187:<0.231.0>: Start off with a little server spam
+%% frequency2.erl:190:<0.231.0>: Allocate a freq, wait for the reply, print it out.
+%% frequency2.erl:192:<0.231.0>: allocated:  10
+
+%% frequency2.erl:194:<0.231.0>: Deallocate the freq.  Should succeed.
+%% frequency2.erl:197:<0.231.0>: Allocate a freq, wait for the reply, print it out.
+%% frequency2.erl:199:<0.231.0>: allocated:  10
+
+%% frequency2.erl:201:<0.231.0>: Because we allocated,deallocated,allocated, the two frequencies should be the same.
+%% frequency2.erl:204:<0.231.0>: Allocate a freq.  Because we haven't deallocated, it should be a new freq.
+%% frequency2.erl:206:<0.231.0>: allocated:  11
+
+%% frequency2.erl:210:<0.231.0>: Deallocate the freq that we have.  This should succeed the first time.
+%% frequency2.erl:213:<0.231.0>: Send a bunch of spam to fill up the server's mailbox.
+%% frequency2.erl:218:<0.231.0>: Send a bunch of spam that'll bounce back into the client's mailbox.
+%% frequency2.erl:223:<0.231.0>: Clear out the server's mailbox.
+%% frequency2.erl:150:<0.229.0>: {request,<0.231.0>,"Server Spam 0"}
+
+%% frequency2.erl:150:<0.229.0>: {request,<0.231.0>,"Server Spam 1"}
+
+%% frequency2.erl:150:<0.229.0>: {request,<0.231.0>,"Server Spam 2"}
+
+%% frequency2.erl:150:<0.229.0>: {request,<0.231.0>,"Server Spam 3"}
+
+%% frequency2.erl:226:<0.231.0>: Clear out the client's mailbox.
+%% frequency2.erl:150:<0.231.0>: "Client Spam 1"
+
+%% frequency2.erl:150:<0.231.0>: "Client Spam 2"
+
+%% frequency2.erl:150:<0.231.0>: "Client Spam 3"
+
+%% frequency2.erl:229:<0.231.0>: Put the server to sleep then pepper it with allocation requests.
+%% frequency2.erl:163:<0.229.0>: I'm feeling very sleepy.
+%% frequency2.erl:231:<0.231.0>: sleeping
+
+%% frequency2.erl:232:<0.231.0>: {error,timedout}
+
+%% frequency2.erl:233:<0.231.0>: {error,timedout}
+
+%% frequency2.erl:165:<0.229.0>: I feel refreshed!
+%%   Test passed.
+%% ok
