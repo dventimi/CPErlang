@@ -73,11 +73,11 @@ loop(Frequencies) ->
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 allocate() -> 
+    clearclient(),			%Clear our own mailbox
     frequency ! {request, self(), allocate},
     receive 
 	{reply, Reply} -> Reply
     after 1000 -> 
-	    clearclient(),			%Clear our own mailbox
 	    {error,timedout}
     end.
 
