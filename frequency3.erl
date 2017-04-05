@@ -9,6 +9,9 @@
 -module(frequency3).
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
+-export([
+	 clear/0
+	]).
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -29,6 +32,7 @@ get_frequencies() -> [10,11,12,13,14,15].
 loop(Frequencies) ->
     receive
 	{request, Pid, allocate} ->
+	    timer:sleep(10000),
 	    {NewFrequencies, Reply} = allocate(Frequencies, Pid),
 	    Pid ! {reply, Reply},
 	    loop(NewFrequencies);
@@ -43,15 +47,21 @@ loop(Frequencies) ->
 %% Functional interface
 
 allocate() -> 
-    frequency ! {request, self(), allocate},
+    clear(), %% clear messages received after the timeout 
+    frequency ! {request, self(), allocate}, 
     receive 
-	{reply, Reply} -> Reply
+	{reply, Reply} -> Reply 
+    after 1000 -> 
+	    {error, timeout} 
     end.
 
 deallocate(Freq) -> 
-    frequency ! {request, self(), {deallocate, Freq}},
+    clear(), %% clear messages received after the timeout 
+    frequency ! {request, self(), {deallocate, Freq}}, 
     receive 
-	{reply, Reply} -> Reply
+	{reply, Reply} -> Reply 
+    after 1000 -> 
+	    {error, timeout} 
     end.
 
 stop() -> 
@@ -72,3 +82,16 @@ allocate({[Freq|Free], Allocated}, Pid) ->
 deallocate({Free, Allocated}, Freq) ->
     NewAllocated=lists:keydelete(Freq, 1, Allocated),
     {[Freq|Free],  NewAllocated}.
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Valentin's code
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+clear() -> 
+    receive 
+	Msg -> 
+	    io:format("Clearing message: ~w~n", [Msg]), 
+	    clear() 
+    after 0 -> 
+	    ok 
+    end.
