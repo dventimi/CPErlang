@@ -9,6 +9,9 @@
 -module(frequency2).
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
+-export([
+	 clear/0
+	]).
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -60,6 +63,10 @@ stop() ->
 	{reply, Reply} -> Reply
     end.
 
+clear() ->
+    receive
+	_Msg -> clear()
+    end.
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
