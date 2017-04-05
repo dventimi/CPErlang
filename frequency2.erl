@@ -82,6 +82,7 @@ allocate() ->
     end.
 
 deallocate(Freq) -> 
+    clearclient(),			%Clear our own mailbox
     frequency ! {request, self(), {deallocate, Freq}},
     receive 
 	{reply, Reply} -> Reply
