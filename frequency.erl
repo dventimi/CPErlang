@@ -58,7 +58,6 @@ deallocate({Free, Allocated}, {Freq, Pid}) ->
 	    {{Free, Allocated}, {error, denied}}
     end.
 
-
 %% Test functions
 
 %% This is the basic functionality exhibited by Simon in the video
@@ -111,6 +110,3 @@ test_functions() ->
     %% This should fail.
     ?MODULE ! {request,self(),{deallocate,10}},
     {error,denied} = receive {reply,Msg7} -> Msg7 end.
-
-
-			     
