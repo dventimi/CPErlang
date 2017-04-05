@@ -10,7 +10,9 @@
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
 -export([
-	 clear/0
+	 clear/0,
+	 clearserver/0,
+	 clearclient/0
 	]).
 
 %% These are the start functions used to create and
@@ -40,7 +42,11 @@ loop(Frequencies) ->
 	    Pid ! {reply, ok},
 	    loop(NewFrequencies);
 	{request, Pid, stop} ->
-	    Pid ! {reply, stopped}
+	    Pid ! {reply, stopped};
+	{request, Pid, clear} ->		%REVIEWER: New protocol handler for 'clear'
+	    clear(),				%Use help function.  Remind me why we're not just using 'flush'?
+	    Pid ! {reply, ok},			%Say 'ok' back to client.  All clear!
+	    loop(Frequencies)			%Loop again, with state unchanged.
     end.
 
 %% Functional interface
@@ -63,10 +69,20 @@ stop() ->
 	{reply, Reply} -> Reply
     end.
 
-clear() ->
+%% REVIEWER: Added a clear function to the functional API.
+
+clearserver() ->
+    frequency ! {request, self(), clear},
     receive
-	_Msg -> clear()
+	{reply, Reply} ->
+	    Reply
     end.
+
+%% REVIEWER: Heck, we might as well support clearing the client
+%% process as well.
+
+clearclient() ->
+    clear().
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
@@ -79,3 +95,14 @@ allocate({[Freq|Free], Allocated}, Pid) ->
 deallocate({Free, Allocated}, Freq) ->
     NewAllocated=lists:keydelete(Freq, 1, Allocated),
     {[Freq|Free],  NewAllocated}.
+
+%% REVIEWER: Added an internal help function used to clear messages.
+%% Note that this can be used by "anybody" (client, server, whomever).
+
+clear() ->
+    receive
+	_Msg -> 				%If ANY message found,
+	    clear()				%discard and check again.
+    after 0 ->					%If NO message found, time out immediately
+	    ok					%then exit.
+    end.
