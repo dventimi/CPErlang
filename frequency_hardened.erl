@@ -10,7 +10,7 @@
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
 -export([
-	 client/1
+	 client/0
 	]).
 
 %% These are the start functions used to create and
@@ -92,29 +92,31 @@ exited({Free, Allocated}, Pid) ->                %%% FUNCTION ADDED
 	    {Free,Allocated} 
     end.
 
-%% TODO Implement a client function that, when spawned as a process,
+%% DONE Implement a client function that, when spawned as a process,
 %% can be used to model a client.
 
-client([]) ->
+client() ->
+    client([]).
+
+client(Frequencies) ->
     receive
-	allocate ->
+	allocate ->				%Get new F from server
 	    {ok,NewF} = allocate(),
-	    client([NewF])
-    end;
-client([F|Fs]) ->
-    receive
-	allocate ->
-	    {ok,NewF} = allocate(),
-	    client([NewF|[F|Fs]]);
-	deallocate ->
-	    deallocate(F),
-	    client(Fs);
-	dump ->
-	    io:format("~p: ~w~n",[self(),[F|Fs]]),
-	    client([F|Fs]);
-	stop ->
+	    client([NewF|Frequencies]);
+	deallocate ->				%Return most recent F to server
+	    case Frequencies of
+		[F|Fs] ->			%Actually have something to return
+		    deallocate(F),
+		    client(Fs);
+		[] ->				%Nothing to return
+		    client(Frequencies)
+	    end;
+	dump ->					%Diagnostic
+	    io:format("~p: ~w~n",[self(),Frequencies]),
+	    client(Frequencies);
+	stop ->					%Stop client process
 	    ok;
-	Msg ->
-	    io:format("~p~n",[Msg]),
-	    client([F|Fs])
+	Msg ->					%"Catch all"
+	    io:format("~p~n",[Msg]),		%Log Msg
+	    client(Frequencies)			%Then loop again
     end.
