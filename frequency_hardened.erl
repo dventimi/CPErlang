@@ -96,34 +96,37 @@ exited({Free, Allocated}, Pid) ->                %%% FUNCTION ADDED
 %% can be used to model a client.
 
 mock_init() ->
-    process_flag(trap_exit, true),
-    mock_loop(1000).
+    mock_loop(1000,false).
 
-mock_loop(Wait) ->
-    mock_script(),
+mock_loop(Wait,Toggle) ->
+    case Toggle of
+	true -> mock_script();
+	false -> ok
+    end,
     timer:sleep(Wait),
-    io:format("~p: Tick ~ps~n",[self(),Wait/1000]),
     receive
 	slower ->
-	    mock_loop(round(Wait*1.10));
+	    mock_loop(round(Wait*1.10),Toggle);
 	faster ->
-	    mock_loop(round(Wait/1.10));
+	    mock_loop(round(Wait/1.10),Toggle);
 	stop ->
 	    ok;
+	toggle ->
+	    mock_loop(Wait,not(Toggle));
 	Msg ->
 	    io:format("~p~n",[Msg]),
-	    mock_loop(Wait)
+	    mock_loop(Wait,Toggle)
     after 0 ->
-	    mock_loop(Wait)
+	    mock_loop(Wait,Toggle)
     end.
 
 mock_script() ->
-    {ok,F1} = allocate(),
-    io:format("~p: Allocated ~p~n",[self(),F1]),
-    {ok,F2} = allocate(),
-    io:format("~p: Allocated ~p~n",[self(),F2]),
-    deallocate(F1),
-    io:format("~p: Deallocated ~p~n",[self(),F1]),
-    deallocate(F2),
-    io:format("~p: Deallocated ~p~n",[self(),F2]).
-
+    Msg = allocate(),
+    case Msg of
+	{ok,F1} ->
+	    io:format("~p: Allocated ~p~n",[self(),F1]),
+	    deallocate(F1),
+	    io:format("~p: Deallocated ~p~n",[self(),F1]);
+	_ ->
+	    error
+    end.
