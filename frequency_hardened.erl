@@ -9,6 +9,9 @@
 -module(frequency_hardened).
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
+-export([
+	 mock_init/0
+	]).
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -88,4 +91,39 @@ exited({Free, Allocated}, Pid) ->                %%% FUNCTION ADDED
 	false ->
 	    {Free,Allocated} 
     end.
+
+%% TODO Implement a client function that, when spawned as a process,
+%% can be used to model a client.
+
+mock_init() ->
+    process_flag(trap_exit, true),
+    mock_loop(1000).
+
+mock_loop(Wait) ->
+    mock_script(),
+    timer:sleep(Wait),
+    io:format("~p: Tick ~ps~n",[self(),Wait/1000]),
+    receive
+	slower ->
+	    mock_loop(round(Wait*1.10));
+	faster ->
+	    mock_loop(round(Wait/1.10));
+	stop ->
+	    ok;
+	Msg ->
+	    io:format("~p~n",[Msg]),
+	    mock_loop(Wait)
+    after 0 ->
+	    mock_loop(Wait)
+    end.
+
+mock_script() ->
+    {ok,F1} = allocate(),
+    io:format("~p: Allocated ~p~n",[self(),F1]),
+    {ok,F2} = allocate(),
+    io:format("~p: Allocated ~p~n",[self(),F2]),
+    deallocate(F1),
+    io:format("~p: Deallocated ~p~n",[self(),F1]),
+    deallocate(F2),
+    io:format("~p: Deallocated ~p~n",[self(),F2]).
 
