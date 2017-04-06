@@ -96,7 +96,7 @@ exited({Free, Allocated}, Pid) ->                %%% FUNCTION ADDED
 %% can be used to model a client.
 
 client() ->
-    process_flag(trap_exit,true),
+    process_flag(trap_exit,true),		%Don't die when the server does
     client([]).
 
 client(Frequencies) ->
