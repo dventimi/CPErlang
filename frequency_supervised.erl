@@ -15,6 +15,7 @@
 	 supervisor_init/0,
 	 worker_init/0
 	]).
+-include_lib("eunit/include/eunit.hrl").	%REVIEWER:  EUnit support
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -81,7 +82,7 @@ allocate({[Freq|Free], Allocated}, Pid) ->
     {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
 
 deallocate({Free, Allocated}, Freq) ->
-    {value,{Freq,Pid}} = lists:keysearch(Freq,1,Allocated),  %%% ADDED
+    {value,{Freq,Pid}} = lists:keysearch(Freq,1,Allocated),
     unlink(Pid),                                             %%% ADDED
     NewAllocated=lists:keydelete(Freq, 1, Allocated),
     {[Freq|Free],  NewAllocated}.
@@ -96,8 +97,9 @@ exited({Free, Allocated}, Pid) ->                %%% FUNCTION ADDED
     end.
 
 %% ################################################################################
-%% TODO Program a supervisor process that can be used to start the
-%% supervisor, and restart it whenever it has terminated unexpectedly.
+%% REVIEWER: Program a supervisor process that can be used to start
+%% the supervisor, and restart it whenever it has terminated
+%% unexpectedly.
 %% ################################################################################
 
 %% REVIEWER: This instruction from FutureLearn is difficult to parse.
@@ -144,8 +146,7 @@ supervisor_loop() ->
     supervisor_loop(Pid).
 supervisor_loop(Pid) -> 
     receive 
-	{'EXIT',SomePid,Reason} -> 		%Oh nos!  Worker died!  Respawn!
-	    io:format("~w,~p~n",[SomePid,Reason]),
+	{'EXIT',_SomePid,_Reason} -> 		%Oh nos!  Worker died!  Respawn!
 	    NewPid = spawn_link(?MODULE,worker_init,[]),
 	    register(?MODULE,NewPid),		%But, we want to preserve the allocate/deallocate functions way above.
 	    supervisor_loop(Pid);
@@ -153,6 +154,10 @@ supervisor_loop(Pid) ->
 	    exit(whereis(?MODULE),kill),		%Exterminate worker w/ extreme prejudice
 	    From ! {reply,ok}			%Hey, Client, everything's A-OK!
     end.
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FUNCTIONAL INTERFACE
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 supervisor_start() -> 				%Functional API helper
     register(supervisor,
@@ -165,3 +170,84 @@ supervisor_stop() -> 				%Functional API helper
 	{reply,Reply} -> 			%You stopped!  Great!
 	    Reply
     end.
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REVIEWER:  Adding EUnit tests.
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+supervisor_test() ->
+    ?debugMsg("The frequency server has the module name 'frequency_supervised'."),
+    ?debugMsg("It shouldn't be registered yet."),
+    ?debugMsg(whereis(frequency_supervised)),
+
+    ?debugMsg("So, allocating should fail."),
+    ?assertError(badarg,frequency_supervised:allocate()),
+
+    ?debugMsg("Start the supervisor.  This will start a worker."),
+    frequency_supervised:supervisor_start(),
+
+    ?debugMsg("...and register it. Note its Pid"),
+    Pid1 = whereis(frequency_supervised),
+    ?debugFmt("Worker1: ~p~n",[Pid1]),
+
+    ?debugMsg("Allocating should now succeed."),
+    {ok,F1} = frequency_supervised:allocate(),
+    {ok,F2} = frequency_supervised:allocate(),
+
+    ?debugMsg("We have to deallocate in order to unlink the worker from the test process."),
+    frequency_supervised:deallocate(F1),
+    frequency_supervised:deallocate(F2),
+
+    ?debugMsg("Otherwise, killing the supervisor--and hence the worker--would take down us!"),
+    exit(whereis(frequency_supervised),kill),
+
+    ?debugMsg("The supervisor should create a new one with a different Pid."),
+    Pid2 = whereis(frequency_supervised),
+    ?debugFmt("Worker1: ~p~n",[Pid2]),
+    whereis(frequency_supervised),
+    ?assertNot(Pid1==Pid2),
+
+    ?debugMsg("And allocation still works.  Notice, though, we're starting from scratch!"),
+    {ok,F3} = frequency_supervised:allocate(),
+
+    ?debugMsg("Again, deallocate, otherwise we'll be collateral damage."),
+    frequency_supervised:deallocate(F3),
+
+    ?debugMsg("Stop the server.  This should also kill the worker."),
+    frequency_supervised:supervisor_stop(),
+
+    ?debugMsg("The worker now should not exist."),
+    ?debugMsg(whereis(frequency_supervised)),
+
+    ?debugMsg("And, now we can no longer allocate."),
+    ?assertError(badarg,frequency_supervised:allocate()),
+
+    ?debugMsg("Fini.").
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% REVIEWER: Transcript of a sample run of frequency_hardened:test().
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% frequency_supervised.erl:170:<0.130.3>: The frequency server has the module name 'frequency_supervised'.
+%% frequency_supervised.erl:171:<0.130.3>: It shouldn't be registered yet.
+%% frequency_supervised.erl:172:<0.130.3>: undefined
+%% frequency_supervised.erl:174:<0.130.3>: So, allocating should fail.
+%% frequency_supervised.erl:177:<0.130.3>: Start the supervisor.  This will start a worker.
+%% frequency_supervised.erl:180:<0.130.3>: ...and register it. Note its Pid
+%% frequency_supervised.erl:182:<0.130.3>: Worker1: <0.133.3>
+
+%% frequency_supervised.erl:184:<0.130.3>: Allocating should now succeed.
+%% frequency_supervised.erl:188:<0.130.3>: We have to deallocate in order to unlink the worker from the test process.
+%% frequency_supervised.erl:192:<0.130.3>: Otherwise, killing the supervisor--and hence the worker--would take down us!
+%% frequency_supervised.erl:195:<0.130.3>: The supervisor should create a new one with a different Pid.
+%% frequency_supervised.erl:197:<0.130.3>: Worker1: <0.134.3>
+
+%% frequency_supervised.erl:201:<0.130.3>: And allocation still works.  Notice, though, we're starting from scratch!
+%% frequency_supervised.erl:204:<0.130.3>: Again, deallocate, otherwise we'll be collateral damage.
+%% frequency_supervised.erl:207:<0.130.3>: Stop the server.  This should also kill the worker.
+%% frequency_supervised.erl:210:<0.130.3>: The worker now should not exist.
+%% frequency_supervised.erl:211:<0.130.3>: undefined
+%% frequency_supervised.erl:213:<0.130.3>: And, now we can no longer allocate.
+%% frequency_supervised.erl:216:<0.130.3>: Fini.
+%%   Test passed.
+%% ok
