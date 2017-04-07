@@ -10,9 +10,10 @@
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
 -export([
-	 start_link/2,
-	 stop/1,
-	 init/1
+	 supervisor_start/0,
+	 supervisor_stop/0,
+	 supervisor_init/0,
+	 worker_init/0
 	]).
 
 %% These are the start functions used to create and
@@ -105,45 +106,62 @@ exited({Free, Allocated}, Pid) ->                %%% FUNCTION ADDED
 %% process that can be used to start the worker"?  Anyway, that's what
 %% I'm doing, with the worker process being the frequency server.
 
-start_link(Name,ChildSpecList) -> 
-    register(Name,spawn_link(my_supervisor,init,[ChildSpecList])),
+%% The supervisor follows the generic process skeleton:
+%% 1. Entry-point is an initialize function (supervisor_init/0).
+%% 2. Jump into the Receive/Evaluate loop (supervisor_loop/1).
+%% 3. Receive/Evaluate loop handles various messages.
+%% 4. Terminate if you get a stop message.
+
+%% The specific parts of the supervisor are these.
+%% 1. The supervisor_init/0 function sets up trap exits to convert signals to messages.
+%% 2. It starts one worker process via the frequency server's own init/0 function (see above).
+%% 3. It establishes a bi-directional link using spawn_link (could also be uni-directional with a monitor).
+%% 4. The state managed by supervisor_loop/1 is just the Pid of the supervised worker.
+%% 5. Handle 'EXIT' messages from dying workers by just respawning the worker.
+%% 6. Note that there's just one worker.  Could be a list, but I just want to keep it simple for now.
+
+%% NOTE: Communication is an open question. The lecture videos talked
+%% about supervision purely in terms of life-cycle management, but
+%% didn't say anything about communication patterns.  Do supervisors
+%% proxy messages to their worker processes?  I'm sure they could, but
+%% I don't know if that's typical.  I just chose not to address that
+%% issue, for the sake of simplicity.  The one and only one worker
+%% process gets registered into the process registry.  If it dies, a
+%% new process is registered under the same name (the module name).
+%% That preserves the functional API methods that we originally
+%% defined above.
+
+supervisor_init() -> 
+    process_flag(trap_exit,true),		%Trap exits
+    supervisor_loop().				%Jump into the loop
+
+worker_init() ->				%Just a wrapper to the function above
+    init().
+
+supervisor_loop() ->
+    Pid = spawn_link(?MODULE,worker_init,[]),
+    register(?MODULE,Pid),			%We could register under anything, say, "worker"
+    supervisor_loop(Pid).
+supervisor_loop(Pid) -> 
+    receive 
+	{'EXIT',SomePid,Reason} -> 		%Oh nos!  Worker died!  Respawn!
+	    io:format("~w,~p~n",[SomePid,Reason]),
+	    NewPid = spawn_link(?MODULE,worker_init,[]),
+	    register(?MODULE,NewPid),		%But, we want to preserve the allocate/deallocate functions way above.
+	    supervisor_loop(Pid);
+	{stop,From} -> 				%Our client wants us to stop.
+	    exit(whereis(?MODULE),kill),		%Exterminate worker w/ extreme prejudice
+	    From ! {reply,ok}			%Hey, Client, everything's A-OK!
+    end.
+
+supervisor_start() -> 				%Functional API helper
+    register(supervisor,
+	     spawn(?MODULE,supervisor_init,[])),
     ok.
 
-init(ChildSpecList) -> 
-    process_flag(trap_exit,true),
-    supervisor_loop(start_children(ChildSpecList)).
-
-start_children([]) -> []; 
-start_children([{M,F,A}|ChildSpecList]) -> 
-    case (catch apply(M,F,A)) of 
-	{ok,Pid} -> 
-	    [{Pid,{M,F,A}}|start_children(ChildSpecList)];
-	_ -> 
-	    start_children(ChildSpecList)
-    end.
-
-restart_child(Pid,ChildList) -> 
-    {value,{Pid,{M,F,A}}} = lists:keysearch(Pid, 1, ChildList), 
-    {ok,NewPid} = apply(M,F,A),
-    [{NewPid,{M,F,A}}|lists:keydelete(Pid,1,ChildList)].
-
-supervisor_loop(ChildList) -> 
+supervisor_stop() -> 				%Functional API helper
+    supervisor ! {stop,self()},			%Hey, Supervisor, Stop!
     receive 
-	{'EXIT',Pid,_Reason} -> 
-	    NewChildList = restart_child(Pid,ChildList),
-	    supervisor_loop(NewChildList);
-	{stop,From} -> 
-	    From ! {reply,terminate(ChildList)}
-    end.
-
-stop(Name) -> 
-    Name ! {stop,self()},
-    receive 
-	{reply,Reply} -> 
+	{reply,Reply} -> 			%You stopped!  Great!
 	    Reply
     end.
-
-terminate([{Pid,_}|ChildList]) -> 
-    exit(Pid,kill),
-    terminate(ChildList);
-terminate(_ChildList) -> ok.
