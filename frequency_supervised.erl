@@ -205,7 +205,6 @@ supervisor_test() ->
     ?debugMsg("The supervisor should create a new one with a different Pid."),
     Pid2 = whereis(frequency_supervised),
     ?debugFmt("Worker1: ~p~n",[Pid2]),
-    whereis(frequency_supervised),
     ?assertNot(Pid1==Pid2),
 
     ?debugMsg("And allocation still works.  Notice, though, we're starting from scratch!"),
