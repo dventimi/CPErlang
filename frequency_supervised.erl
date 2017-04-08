@@ -147,7 +147,7 @@ supervisor_loop() ->
 
 supervisor_loop(Pid) -> 
     receive 
-	{'EXIT',_SomePid,_Reason} -> 		%Oh nos!  Worker died!  Respawn!
+	{'EXIT',Pid,_Reason} -> 		%Oh nos!  Worker died!  Respawn!
 	    NewPid = spawn_link(?MODULE,worker_init,[]),
 	    register(?MODULE,NewPid),		%But, we want to preserve the allocate/deallocate functions way above.
 	    supervisor_loop(Pid);
