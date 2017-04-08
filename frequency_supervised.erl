@@ -208,10 +208,11 @@ supervisor_test() ->
     ?assertNot(Pid1==Pid2),
 
     ?debugMsg("And allocation still works.  Notice, though, we're starting from scratch!"),
-    {ok,F3} = frequency_supervised:allocate(),
+    ?debugMsg("I.e., we'll get freq 10 again. If we don't, the pattern match below will fail."),
+    {ok,F1} = frequency_supervised:allocate(),
 
     ?debugMsg("Again, deallocate, otherwise we'll be collateral damage."),
-    frequency_supervised:deallocate(F3),
+    frequency_supervised:deallocate(F1),
 
     ?debugMsg("Stop the server.  This should also kill the worker."),
     frequency_supervised:supervisor_stop(),
@@ -228,26 +229,27 @@ supervisor_test() ->
 %% REVIEWER: Transcript of a sample run of frequency_hardened:test().
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% frequency_supervised.erl:170:<0.130.3>: The frequency server has the module name 'frequency_supervised'.
-%% frequency_supervised.erl:171:<0.130.3>: It shouldn't be registered yet.
-%% frequency_supervised.erl:172:<0.130.3>: undefined
-%% frequency_supervised.erl:174:<0.130.3>: So, allocating should fail.
-%% frequency_supervised.erl:177:<0.130.3>: Start the supervisor.  This will start a worker.
-%% frequency_supervised.erl:180:<0.130.3>: ...and register it. Note its Pid
-%% frequency_supervised.erl:182:<0.130.3>: Worker1: <0.133.3>
+%% frequency_supervised.erl:180:<0.52.0>: The frequency server has the module name 'frequency_supervised'.
+%% frequency_supervised.erl:181:<0.52.0>: It shouldn't be registered yet.
+%% frequency_supervised.erl:182:<0.52.0>: undefined
+%% frequency_supervised.erl:184:<0.52.0>: So, allocating should fail.
+%% frequency_supervised.erl:187:<0.52.0>: Start the supervisor.  This will start a worker.
+%% frequency_supervised.erl:190:<0.52.0>: ...and register it. Note its Pid
+%% frequency_supervised.erl:192:<0.52.0>: Worker1: <0.55.0>
 
-%% frequency_supervised.erl:184:<0.130.3>: Allocating should now succeed.
-%% frequency_supervised.erl:188:<0.130.3>: We have to deallocate in order to unlink the worker from the test process.
-%% frequency_supervised.erl:192:<0.130.3>: Otherwise, killing the supervisor--and hence the worker--would take down us!
-%% frequency_supervised.erl:195:<0.130.3>: The supervisor should create a new one with a different Pid.
-%% frequency_supervised.erl:197:<0.130.3>: Worker1: <0.134.3>
+%% frequency_supervised.erl:194:<0.52.0>: Allocating should now succeed.
+%% frequency_supervised.erl:198:<0.52.0>: We have to deallocate in order to unlink the worker from the test process.
+%% frequency_supervised.erl:202:<0.52.0>: Otherwise, killing the supervisor--and hence the worker--would take down us!
+%% frequency_supervised.erl:205:<0.52.0>: The supervisor should create a new one with a different Pid.
+%% frequency_supervised.erl:207:<0.52.0>: Worker1: <0.56.0>
 
-%% frequency_supervised.erl:201:<0.130.3>: And allocation still works.  Notice, though, we're starting from scratch!
-%% frequency_supervised.erl:204:<0.130.3>: Again, deallocate, otherwise we'll be collateral damage.
-%% frequency_supervised.erl:207:<0.130.3>: Stop the server.  This should also kill the worker.
-%% frequency_supervised.erl:210:<0.130.3>: The worker now should not exist.
-%% frequency_supervised.erl:211:<0.130.3>: undefined
-%% frequency_supervised.erl:213:<0.130.3>: And, now we can no longer allocate.
-%% frequency_supervised.erl:216:<0.130.3>: Fini.
+%% frequency_supervised.erl:210:<0.52.0>: And allocation still works.  Notice, though, we're starting from scratch!
+%% frequency_supervised.erl:211:<0.52.0>: I.e., we'll get freq 10 again. If we don't, the pattern match below will fail.
+%% frequency_supervised.erl:214:<0.52.0>: Again, deallocate, otherwise we'll be collateral damage.
+%% frequency_supervised.erl:217:<0.52.0>: Stop the server.  This should also kill the worker.
+%% frequency_supervised.erl:220:<0.52.0>: The worker now should not exist.
+%% frequency_supervised.erl:221:<0.52.0>: undefined
+%% frequency_supervised.erl:223:<0.52.0>: And, now we can no longer allocate.
+%% frequency_supervised.erl:226:<0.52.0>: Fini.
 %%   Test passed.
 %% ok
