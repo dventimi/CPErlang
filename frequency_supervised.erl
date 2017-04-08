@@ -144,6 +144,7 @@ supervisor_loop() ->
     Pid = spawn_link(?MODULE,worker_init,[]),
     register(?MODULE,Pid),			%We could register under anything, say, "worker"
     supervisor_loop(Pid).
+
 supervisor_loop(Pid) -> 
     receive 
 	{'EXIT',_SomePid,_Reason} -> 		%Oh nos!  Worker died!  Respawn!
