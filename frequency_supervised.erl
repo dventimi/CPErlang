@@ -150,7 +150,7 @@ supervisor_loop(Pid) ->
 	{'EXIT',Pid,_Reason} -> 		%Oh nos!  Worker died!  Respawn!
 	    NewPid = spawn_link(?MODULE,worker_init,[]),
 	    register(?MODULE,NewPid),		%But, we want to preserve the allocate/deallocate functions way above.
-	    supervisor_loop(Pid);
+	    supervisor_loop(NewPid);
 	{stop,From} -> 				%Our client wants us to stop.
 	    exit(whereis(?MODULE),kill),		%Exterminate worker w/ extreme prejudice
 	    From ! {reply,ok}			%Hey, Client, everything's A-OK!
