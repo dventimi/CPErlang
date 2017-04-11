@@ -1,5 +1,8 @@
 -module(errors).
 -export([
+	 bail/3,
+	 recurse/2,
+	 try_recurse/1,
 	 try_return/1
 	]).
 -include_lib("eunit/include/eunit.hrl").
@@ -73,7 +76,7 @@ return_error(3) ->
 %% the same.
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-try_return(X) when is_integer(X) ->
+try_return(X) ->
     try return_error(X) of
 	Val ->
 	    Val
@@ -122,3 +125,70 @@ error_test() ->
 
 %%   Test passed.
 %% ok
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Take II.
+%%
+%% 
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% Driving function.  'Choice' parameter is in [0,1,2,3].
+%%
+%% 0 causes a local return. Execution continues in bail/3.
+%%
+%% 1 causes a non-local return with throw.  Execution continues in
+%% catch block of try_recurse/1.
+%%
+%% 2 causes an error.  Is it non-local?  What is returned?
+%%
+%% 3 causes an exit.  Is it non-local?  What is returned?
+
+try_recurse(Choice) ->    
+    try recurse(10,				%Max 10 recursions
+		fun(X)->
+			bail(Choice,X,5) 	%Bail with 'Choice' when X decrements from 10 to 5
+		end)
+    catch
+	throw:V ->
+	    io:format("Non-local return of ~p caused by 'throw'.~n",[V]),
+	    V;
+	error:V ->
+	    io:format("Non-local return of ~p caused by 'error'.~n",[V]),
+	    V;
+	exit:V ->
+	    io:format("Non-local return of ~p caused by 'exit'.~n",[V]),
+	    V
+    end.
+
+%% Non-tail recursively apply the function F, maximum N times.  The
+%% number of recursions may be less, in particular if F performs a
+%% non-local return.
+
+recurse(N,_F) when N =< 0 ->
+    ok;
+recurse(N,F) ->
+    F(N),
+    recurse(N-1,F).
+
+%% Function we can use in recurse/2.  Depending on Choice (0,1,2,3),
+%% it may or may not perform a non-local return.  0 definitely
+%% doesn't.  1 definitely does, because calls throw/1.  2 & 3 call
+%% error/1 and exit/1, respectively.  Are they considered non-local
+%% returns?
+
+bail(Choice,N,M) when N<M ->
+    case Choice of
+	0 ->
+	    ok;
+	1 ->
+	    throw(non_local_throw);
+	2 ->
+	    error(non_local_error);
+	3 ->
+	    exit(non_local_exit)
+    end,
+    io:format("Local return, N:~p~n",[N]),
+    ok;
+bail(_Choice,_N,_M) ->
+    ok.
+
