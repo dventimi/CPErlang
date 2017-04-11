@@ -129,7 +129,23 @@ error_test() ->
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Take II.
 %%
-%% 
+%% The objective here is to observe the "non-local" part of the phrase
+%% "non-local return", with respect to throw/1, exit/1, and error/1.  
+%%
+%% The try_recurse/1 function calls a deliberately non-tail recursive
+%% function that just calls another function, in this case hard-coded
+%% to be bail/3.
+%%
+%% The bail/3 function here "bails out" after 5 recursions, either
+%% with throw/1, error/1, or exit/1.
+%%
+%% The point is that for all of throw/1, error/1, and exit/1, the
+%% execution order skips the call to 'io:format("Local return,
+%% N:~p~n",[N])' in bail/1.  It's this alteration of execution order
+%% that I regard as "non-local."  In that case, it seems plausible to
+%% say that not just throw/1 is non-local, but all three of throw/1,
+%% error/1, and exit/1 are non-local.  This may be the most unprofound
+%% thing said this year, I admit.
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Driving function.  'Choice' parameter is in [0,1,2,3].
