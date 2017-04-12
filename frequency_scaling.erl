@@ -9,6 +9,7 @@
 -module(frequency_scaling).
 -export([start/0,allocate/0,deallocate/1,stop/0]).
 -export([init/0]).
+-include_lib("eunit/include/eunit.hrl").
 
 %% These are the start functions used to create and
 %% initialize the server.
