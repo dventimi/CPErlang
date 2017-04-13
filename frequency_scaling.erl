@@ -112,3 +112,31 @@ allocate({[Freq|Free],Allocated},Pid) ->
 deallocate({Free,Allocated},Freq) ->
     NewAllocated=lists:keydelete(Freq,1,Allocated),
     {[Freq|Free], NewAllocated}.
+
+%% ################################################################################
+%% REVIEWER:  Test function that just runs a script
+%% ################################################################################
+
+%% This is the basic functionality exhibited by Simon in the video
+%% lecture.
+frequency_test_() ->
+    {setup,
+     fun server_start/0,
+     fun server_stop/1,
+     fun test_functions/0}.
+
+server_start() ->
+    ?debugMsg("Starting the frequency server."),
+    start(),
+    timer:sleep(1000),
+    ?debugMsg("Frequency server started.").
+
+server_stop(_) ->
+    stop().
+
+test_functions() ->
+    ?debugFmt("~p~n",[frequency_scaling:allocate()]),
+    ?debugFmt("~p~n",[frequency_scaling:allocate()]),
+    ?debugFmt("~p~n",[frequency_scaling:allocate()]),
+    ?debugFmt("~p~n",[frequency_scaling:allocate()]).
+
