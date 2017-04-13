@@ -213,9 +213,20 @@ server_stop(_) ->
     stop().
 
 test_functions() ->
-    ?debugFmt("~p~n",[frequency_scaling:allocate()]),
-    ?debugFmt("~p~n",[frequency_scaling:allocate()]),
-    ?debugFmt("~p~n",[frequency_scaling:deallocate({10,1})]),
-    ?debugFmt("~p~n",[frequency_scaling:allocate()]),
-    ?debugFmt("~p~n",[frequency_scaling:allocate()]).
+    ?debugFmt("~p",[frequency_scaling:allocate()]),
+    ?debugFmt("~p",[frequency_scaling:allocate()]),
+    ?debugFmt("~p",[frequency_scaling:deallocate({10,1})]),
+    ?debugFmt("~p",[frequency_scaling:allocate()]),
+    ?debugFmt("~p",[frequency_scaling:allocate()]).
 
+%% ################################################################################
+%% Test output
+%% ################################################################################
+
+%% frequency_scaling.erl:207:<0.8865.2>: Starting the frequency server.
+%% frequency_scaling.erl:210:<0.8865.2>: Frequency server started.
+%% frequency_scaling.erl:216:<0.8870.2>: {ok,10}
+%% frequency_scaling.erl:217:<0.8870.2>: {ok,20}
+%% frequency_scaling.erl:218:<0.8870.2>: ok
+%% frequency_scaling.erl:219:<0.8870.2>: {ok,10}
+%% frequency_scaling.erl:220:<0.8870.2>: {ok,21}
