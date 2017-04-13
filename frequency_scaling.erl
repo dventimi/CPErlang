@@ -13,7 +13,6 @@
 	 dump/0,
 	 backend_init/1,
 	 frontend_loop/1,
-	 frontend_loop/2,
 	 start/0,
 	 stop/0
 	]).
@@ -35,24 +34,27 @@ stop() ->
 %% initialize the server.
 
 frontend_loop(Backends) ->
-    frontend_loop(Backends,Backends).
+    frontend_loop(Backends,Backends,1).
 
-frontend_loop([],Backends) ->
-    frontend_loop(Backends,Backends);
-frontend_loop([X|Xs],Backends) ->
+frontend_loop([],Backends,_N) ->
+    frontend_loop(Backends,Backends,1);
+frontend_loop([X|Xs],Backends,N) ->
     receive 
 	{frontend,Pid,stop} ->
 	    lists:map(fun(Backend) ->
-    			      Backend ! {request,self(),stop}
-    		      end,
-    		      Backends),	    
+    	    		      Backend ! {{tag,N},{message,{request,self(),stop}}}
+    	    	      end,
+    	    	      Backends),	    
 	    Pid ! {reply,ok};
 	{frontend,Pid,dump} ->
 	    Pid ! {reply,Backends},
-	    frontend_loop([X|Xs],Backends);
+	    frontend_loop([X|Xs],Backends,N);
+	{request,Pid,{deallocate,Freq,{tag,M}}} ->
+	    lists:nth(M,Backends) ! {{tag,M},{message,{request,Pid,{deallocate,Freq}}}},
+	    frontend_loop([X|Xs],Backends,N);
 	Msg ->
-	    X ! Msg,
-	    frontend_loop(Xs,Backends)
+	    X ! {{tag,N},{message,Msg}},
+	    frontend_loop(Xs,Backends,N+1)
     end.
 
 %% The Main Loop
@@ -62,22 +64,24 @@ backend_init(Free) ->
 
 backend_loop(Frequencies) ->
     receive
-	{request,Pid,dump} ->
-	    Pid ! {reply,Frequencies},
+	{{tag,N},{message,{request,Pid,dump}}} ->
+	    Pid ! {reply,{tag,N},Frequencies},
 	    backend_loop(Frequencies);
-	{request,Pid,ping} ->
-	    Pid ! {reply,{pong,self()}},
+	{{tag,N},{message,{{request,Pid,ping}}}} ->
+	    Pid ! {reply,{tag,N},{pong,self()}},
 	    backend_loop(Frequencies);
-	{request,Pid,allocate} ->
+	{{tag,N},{message,{request,Pid,allocate}}} ->
 	    {NewFrequencies,Reply} = allocate(Frequencies,Pid),
-	    Pid ! {reply,Reply},
+	    Pid ! {reply,{tag,N},Reply},
 	    backend_loop(NewFrequencies);
-	{request,Pid ,{deallocate,Freq}} ->
+	{{tag,N},{message,{request,Pid,{deallocate,Freq}}}} ->
 	    NewFrequencies = deallocate(Frequencies,Freq),
-	    Pid ! {reply,ok},
+	    Pid ! {reply,{tag,N},ok},
 	    backend_loop(NewFrequencies);
-	{request,Pid,stop} ->
-	    Pid ! {reply,stopped}
+	{{tag,N},{message,{request,Pid,stop}}} ->
+	    Pid ! {reply,{tag,N},stopped};
+	Msg ->
+	    io:format("Unexpected message: ~p~n",[Msg])
     end.
 
 %% Functional interface
@@ -86,19 +90,29 @@ dump() ->
     frontend ! {frontend,self(),dump},
     receive
 	{reply,Backends} ->
-	    io:format("~p~n",[Backends])
+	    io:format("~p~n",[Backends]);
+	Msg ->
+	    io:format("Unexpected message: ~p~n",[Msg])
     end.
 
 allocate() -> 
     frontend ! {request,self(),allocate},
     receive 
-	{reply,Reply} -> Reply
+	{reply,{tag,N},Reply} -> 
+	    io:format("Tag: ~p~n",[N]),
+	    Reply;
+	Msg ->
+	    io:format("Unexpected message: ~p~n",[Msg])
     end.
 
-deallocate(Freq) -> 
-    frontend ! {request,self(),{deallocate,Freq}},
+deallocate({Freq,N}) -> 
+    frontend ! {request,self(),{deallocate,Freq,{tag,N}}},
     receive 
-	{reply,Reply} -> Reply
+	{reply,{tag,N},Reply} -> 
+	    io:format("Tag: ~p~n",[N]),
+	    Reply;
+	Msg ->
+	    io:format("Unexpected message: ~p~n",[Msg])
     end.
 
 %% The Internal Help Functions used to allocate and
@@ -117,8 +131,6 @@ deallocate({Free,Allocated},Freq) ->
 %% REVIEWER:  Test function that just runs a script
 %% ################################################################################
 
-%% This is the basic functionality exhibited by Simon in the video
-%% lecture.
 frequency_test_() ->
     {setup,
      fun server_start/0,
@@ -137,6 +149,7 @@ server_stop(_) ->
 test_functions() ->
     ?debugFmt("~p~n",[frequency_scaling:allocate()]),
     ?debugFmt("~p~n",[frequency_scaling:allocate()]),
+    ?debugFmt("~p~n",[frequency_scaling:deallocate({10,1})]),
     ?debugFmt("~p~n",[frequency_scaling:allocate()]),
     ?debugFmt("~p~n",[frequency_scaling:allocate()]).
 
