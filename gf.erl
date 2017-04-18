@@ -19,7 +19,7 @@
 -export([handle_info/2, terminate/2, code_change/3]).
 
 % you will need to implement these.
--export([allocate/0,deallocate/1,stop/0,report/0]).
+-export([allocate/0,deallocate/1,stop/0,report/0,inject/1]).
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -49,6 +49,9 @@ stop() ->
 report() ->
     gen_server:call(?MODULE,report).
 
+inject(Freq) ->
+    gen_server:cast(?MODULE,{inject,Freq}).
+
 %% Callback functions
 
 handle_call(allocate,From,Frequencies) ->
@@ -59,6 +62,9 @@ handle_call(report,_From,Frequencies) ->
 
 handle_cast({deallocate,Freq},Frequencies) ->
     NewFrequencies = deallocate(Frequencies,Freq),
+    {noreply,NewFrequencies};
+handle_cast({inject,Freq},Frequencies) ->
+    NewFrequencies = inject(Frequencies,Freq),
     {noreply,NewFrequencies}.
 
 %% handle_cast(stop,State) ->
@@ -74,7 +80,11 @@ allocate({[Freq|Free], Allocated}, Pid) ->
 
 deallocate({Free, Allocated}, Freq) ->
     NewAllocated=lists:keydelete(Freq, 1, Allocated),
-    {[Freq|Free],  NewAllocated}.
+    {[Freq|Free], NewAllocated}.
+
+inject({Free, Allocated}, Freq) ->
+    {[Freq|Free], Allocated}.
+    
 
 % default implementations
 
