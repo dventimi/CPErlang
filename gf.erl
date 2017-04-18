@@ -26,12 +26,12 @@
 
 start_link() ->
     gen_server:start_link(
-		{local, ?MODULE}, 
-		?MODULE, [], []).
+      {local, ?MODULE}, 
+      ?MODULE, [], []).
 
 init([]) ->
-  Frequencies = {get_frequencies(), []},
-  {ok, Frequencies}.
+    Frequencies = {get_frequencies(), []},
+    {ok, Frequencies}.
 
 % Hard Coded
 get_frequencies() -> [10,11,12,13,14,15].
@@ -51,24 +51,22 @@ handle_call(message, From, State) ->
     'for you to do'.
 
 handle_cast(message, State) ->
-  'for you to do';  
-  
+    'for you to do';  
+
 handle_cast(stop, State) ->
-  'for you to do'.    
-  
+    'for you to do'.    
 
 %% The Internal Help Functions used to allocate and
 %% deallocate frequencies.
 
 allocate({[], Allocated}, _Pid) ->
-  {{[], Allocated}, {error, no_frequency}};
+    {{[], Allocated}, {error, no_frequency}};
 allocate({[Freq|Free], Allocated}, Pid) ->
-  {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
+    {{Free, [{Freq, Pid}|Allocated]}, {ok, Freq}}.
 
 deallocate({Free, Allocated}, Freq) ->
-  NewAllocated=lists:keydelete(Freq, 1, Allocated),
-  {[Freq|Free],  NewAllocated}.
-
+    NewAllocated=lists:keydelete(Freq, 1, Allocated),
+    {[Freq|Free],  NewAllocated}.
 
 % default implementations
 
