@@ -19,7 +19,7 @@
 -export([handle_info/2, terminate/2, code_change/3]).
 
 % you will need to implement these.
--export([allocate/0,deallocate/1,stop/0]).
+-export([allocate/0,deallocate/1,stop/0,report/0]).
 
 %% These are the start functions used to create and
 %% initialize the server.
@@ -46,11 +46,16 @@ deallocate(Freq) ->
 stop() ->  
     gen_server:stop(?MODULE).
 
+report() ->
+    gen_server:call(?MODULE,report).
+
 %% Callback functions
 
 handle_call(allocate,From,Frequencies) ->
     {NewFrequencies,Reply} = allocate(Frequencies,From),
-    {reply,Reply,NewFrequencies}.
+    {reply,Reply,NewFrequencies};
+handle_call(report,_From,Frequencies) ->
+    {reply,Frequencies,Frequencies}.
 
 handle_cast({deallocate,Freq},Frequencies) ->
     NewFrequencies = deallocate(Frequencies,Freq),
