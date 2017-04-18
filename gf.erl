@@ -8,6 +8,7 @@
 
 -module(gf).
 -behaviour(gen_server).
+-include_lib("eunit/include/eunit.hrl").
 
 % an implementation of this is included.
 -export([start_link/0]).
@@ -96,3 +97,29 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+%% Test functions
+
+paces_test() ->
+    ?debugMsg("Start the server."),
+    ?debugFmt("~p",[gf:start_link()]),
+
+    ?debugMsg("Allocate frequency 10 and report."),
+    ?debugFmt("~p",[gf:allocate()]),
+    ?debugFmt("~p",[gf:report()]),
+
+    ?debugMsg("Inject frequency 20 and report."),
+    ?debugFmt("~p",[gf:inject(20)]),
+    ?debugFmt("~p",[gf:report()]),
+
+    ?debugMsg("Allocate frequency 20 and report."),
+    ?debugFmt("~p",[gf:allocate()]),
+    ?debugFmt("~p",[gf:report()]),
+
+    ?debugMsg("Deallocate frequencies 10 & 10 and report."),
+    ?debugFmt("~p",[gf:deallocate(10)]),
+    ?debugFmt("~p",[gf:deallocate(20)]),
+    ?debugFmt("~p",[gf:report()]),
+
+    ?debugMsg("Stop the server."),
+    ?debugFmt("~p",[gf:stop()]).
